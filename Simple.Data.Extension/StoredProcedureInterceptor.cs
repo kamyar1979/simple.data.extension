@@ -5,14 +5,20 @@
 	using System.Configuration;
 	using System.Data;
 	using System.Data.Common;
-	using Castle.DynamicProxy;
 	using System.Dynamic;
-	using System.Linq.Expressions;
+	using Castle.DynamicProxy;
 
+	/// <summary>
+	/// The brain of the project: Windsor IoC Interceptor.
+	/// </summary>
 	public class StoredProcedureInterceptor : IInterceptor
 	{
 		private DbConnection connection;
 
+		/// <summary>
+		/// main Intercetpr method.
+		/// </summary>
+		/// <param name="invocation"></param>
 		public void Intercept(IInvocation invocation)
 		{
 			var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ProviderName);
@@ -174,7 +180,7 @@
 			yield break;
 		}
 
-		public IEnumerable<T> GetIterator<T>(IDataReader reader) where T : class, new()
+		private IEnumerable<T> GetIterator<T>(IDataReader reader) where T : class, new()
 		{
 			T instance;
 			string[] fields = new string[reader.FieldCount];
@@ -198,7 +204,7 @@
 			yield break;
 		}
 
-		public IEnumerable<object> GetIteratorDynamic(IDataReader reader)
+		private IEnumerable<object> GetIteratorDynamic(IDataReader reader)
 		{
 			var builder = new DynamicTypeBuilder("anonym_" + reader.GetHashCode());
 			string[] fields = new string[reader.FieldCount];
