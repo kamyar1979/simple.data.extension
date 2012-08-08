@@ -14,17 +14,26 @@ namespace Simple.Data.ExtensionTest
 			Setup.Initialize();
 			Setup.Register<IFinancialStoredProcedures>("Financial");
 
-			var financial = Setup.GetInstance<IFinancialStoredProcedures>();
+			var db = Setup.GetInstance<IFinancialStoredProcedures>();
 
-			var res = financial.GetLessonList();			
+			//var res = financial.GetLessonList();			
 
-			foreach (dynamic item in res)
-			{
-				Console.WriteLine(item.LessonName);
-			}
-			var lesson = financial.GetLesson(1001251);
+			//foreach (dynamic item in res)
+			//{
+			//    Console.WriteLine(item.LessonName);
+			//}
+			//var lesson = financial.GetLesson(1001251);
 
-			Console.WriteLine(lesson.Unit);
+			//Console.WriteLine(lesson.Unit);
+
+			Console.WriteLine(db.TestRetVal());
+
+			int retval = 0;
+			
+			Console.WriteLine(db.TestRetValParam("Kamyar", out retval));
+
+			Console.WriteLine(retval);
+
 			Console.ReadLine();
 
 		}

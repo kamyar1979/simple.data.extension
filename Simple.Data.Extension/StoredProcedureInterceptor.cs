@@ -26,6 +26,8 @@
 			connection.ConnectionString = ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ConnectionString;
 			connection.Open();
 
+			bool returnAsResult = Attribute.IsDefined(invocation.Method, typeof(ReturnValueAsResultAttribute));
+
 			var command = factory.CreateCommand();
 			command.Connection = this.connection;
 			command.CommandType = CommandType.StoredProcedure;
@@ -39,7 +41,14 @@
 				}
 				var param = factory.CreateParameter();
 				param.ParameterName = item.Name;
-				param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
+				if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
+				{
+					param.Direction = ParameterDirection.ReturnValue;
+				}
+				else
+				{
+					param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
+				}
 				param.DbType = (DbType)Enum.Parse(typeof(DbType), item.ParameterType.Name.Replace("&", ""));
 				param.Value = invocation.Arguments[i];
 				command.Parameters.Add(param);
@@ -47,59 +56,11 @@
 			}
 			if (invocation.Method.ReturnType != null)
 			{
-				if (invocation.Method.ReturnType == typeof(Dictionary<string, object>))
+				if (!returnAsResult)
 				{
-					var reader = command.ExecuteReader();
-					if (reader.Read())
+					if (invocation.Method.ReturnType == typeof(Dictionary<string, object>))
 					{
-						string[] fields = new string[reader.FieldCount];
-						for (i = 0; i < reader.FieldCount; i++)
-						{
-							fields[i] = reader.GetName(i);
-						}
-
-						if (invocation.Method.ReturnType == typeof(object))
-						{
-							var instance = new Dictionary<string, object>();
-							foreach (var name in fields)
-							{
-								instance.Add(name, reader[name] is DBNull ? null : reader[name]);
-							}
-							invocation.ReturnValue = instance;
-						}
-					}
-
-				}
-				else if (invocation.Method.ReturnType.GetInterface("IEnumerable") != null)
-				{
-					var reader = command.ExecuteReader();
-					Type type;
-					if (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0] != typeof(object))
-					{
-						if (invocation.Method.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
-						{
-							invocation.ReturnValue = this.GetIteratorDictionary(reader);
-						}
-						else
-						{
-							type = invocation.Method.ReturnType.GetGenericArguments()[0];
-							invocation.ReturnValue = this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
-						}
-					}
-					else
-					{
-						invocation.ReturnValue = this.GetIteratorDynamic(reader);
-					}
-
-				}
-				else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string))
-				{
-					invocation.ReturnValue = command.ExecuteScalar();
-				}
-				else
-				{
-					using (var reader = command.ExecuteReader())
-					{
+						var reader = command.ExecuteReader();
 						if (reader.Read())
 						{
 							string[] fields = new string[reader.FieldCount];
@@ -110,38 +71,101 @@
 
 							if (invocation.Method.ReturnType == typeof(object))
 							{
-								var builder = new DynamicTypeBuilder("anonym_" + reader.GetHashCode());
+								var instance = new Dictionary<string, object>();
 								foreach (var name in fields)
 								{
-									builder.AddProperty(name, reader.GetFieldType(reader.GetOrdinal(name)));
-								}
-								var type = builder.CreateType();
-								var instance = Activator.CreateInstance(type);
-								foreach (var name in fields)
-								{
-									var fieldType = reader.GetFieldType(reader.GetOrdinal(name));
-									type.GetProperty(name).SetValue(instance, reader[name] is DBNull ? null : reader[name], null);
+									instance.Add(name, reader[name] is DBNull ? null : reader[name]);
 								}
 								invocation.ReturnValue = instance;
 							}
+						}
+					}
+					else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string))
+					{
+						invocation.ReturnValue = command.ExecuteScalar();
+					}
+					else if (invocation.Method.ReturnType.GetInterface("IEnumerable") != null)
+					{
+						var reader = command.ExecuteReader();
+						Type type;
+						if (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0] != typeof(object))
+						{
+							if (invocation.Method.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
+							{
+								invocation.ReturnValue = this.GetIteratorDictionary(reader);
+							}
 							else
 							{
-								var instance = Activator.CreateInstance(invocation.Method.ReturnType);
-								foreach (var prop in invocation.Method.ReturnType.GetProperties())
-								{
-									if (Array.IndexOf(fields, prop.Name) != -1)
-									{
-										prop.SetValue(instance, reader[prop.Name] is DBNull ? null : reader[prop.Name], null);
-									}
-								}
-								invocation.ReturnValue = instance;
+								type = invocation.Method.ReturnType.GetGenericArguments()[0];
+								invocation.ReturnValue = this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
 							}
 						}
 						else
 						{
-							invocation.ReturnValue = null;
+							invocation.ReturnValue = this.GetIteratorDynamic(reader);
+						}
+
+					}
+					else
+					{
+						using (var reader = command.ExecuteReader())
+						{
+							if (reader.Read())
+							{
+								string[] fields = new string[reader.FieldCount];
+								for (i = 0; i < reader.FieldCount; i++)
+								{
+									fields[i] = reader.GetName(i);
+								}
+
+								if (invocation.Method.ReturnType == typeof(object))
+								{
+									var builder = new DynamicTypeBuilder("anonym_" + reader.GetHashCode());
+									foreach (var name in fields)
+									{
+										builder.AddProperty(name, reader.GetFieldType(reader.GetOrdinal(name)));
+									}
+									var type = builder.CreateType();
+									var instance = Activator.CreateInstance(type);
+									foreach (var name in fields)
+									{
+										var fieldType = reader.GetFieldType(reader.GetOrdinal(name));
+										type.GetProperty(name).SetValue(instance, reader[name] is DBNull ? null : reader[name], null);
+									}
+									invocation.ReturnValue = instance;
+								}
+								else
+								{
+									var instance = Activator.CreateInstance(invocation.Method.ReturnType);
+									foreach (var prop in invocation.Method.ReturnType.GetProperties())
+									{
+										if (Array.IndexOf(fields, prop.Name) != -1)
+										{
+											prop.SetValue(instance, reader[prop.Name] is DBNull ? null : reader[prop.Name], null);
+										}
+									}
+									invocation.ReturnValue = instance;
+								}
+							}
+							else
+							{
+								invocation.ReturnValue = null;
+							}
 						}
 					}
+				}
+				else
+				{
+					var retval = factory.CreateParameter();
+
+					retval.Direction = ParameterDirection.ReturnValue;
+					retval.ParameterName = "RetVal";
+					retval.DbType = (DbType)Enum.Parse(typeof(DbType), invocation.Method.ReturnType.Name.Replace("&", ""));
+					command.Parameters.Add(retval);
+
+					command.ExecuteNonQuery();
+
+					invocation.ReturnValue = retval.Value;
 				}
 			}
 			else
