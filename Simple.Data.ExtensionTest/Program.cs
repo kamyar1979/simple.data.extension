@@ -10,8 +10,7 @@ namespace Simple.Data.ExtensionTest
 	class Program
 	{
 		static void Main(string[] args)
-		{
-			Setup.Initialize();
+		{			
 			Setup.Register<IFinancialStoredProcedures>("Financial");
 
 			var db = Setup.GetInstance<IFinancialStoredProcedures>();

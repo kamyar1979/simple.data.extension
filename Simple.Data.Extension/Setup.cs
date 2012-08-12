@@ -2,29 +2,19 @@
 {
 	using System;
 	using System.Collections.Generic;
-	using Castle.MicroKernel.Registration;
-	using Castle.Windsor;
+	using Castle.DynamicProxy;
 
 	/// <summary>
 	/// This class is the only thing you have to consider using: Sets up the whole things!
 	/// </summary>
 	public static class Setup
 	{
-		internal static IWindsorContainer Container;
+		internal static StoredProcedureInterceptor interceptor;
 		internal static Dictionary<Type, string> connectionStringNames = new Dictionary<Type,string>();
 
-		/// <summary>
-		/// Initializes the Simple.Data.Extension package.
-		/// </summary>
-		public static void Initialize()
+		static Setup()
 		{
-			if (Container == null)
-			{				
-				Container = new WindsorContainer()
-					.Register(
-					Component.For<StoredProcedureInterceptor>()
-					);
-			}
+			interceptor = new StoredProcedureInterceptor();
 		}
 
 		/// <summary>
@@ -33,8 +23,7 @@
 		/// <typeparam name="T">Interface type</typeparam>
 		/// <param name="connectionName">Database connection string name  in the web/app.config</param>
 		public static void Register<T>(string connectionName = "default") where T : class
-		{
-			Container.Register(Component.For<T>().Interceptors<StoredProcedureInterceptor>());
+		{			
 			connectionStringNames[typeof(T)] = connectionName;
 		}
 
@@ -45,7 +34,8 @@
 		/// <returns></returns>
 		public static T GetInstance<T>() where T: class
 		{
-			return Container.Resolve<T>();
+			var proxyGen = new ProxyGenerator();
+			return proxyGen.CreateInterfaceProxyWithoutTarget<T>(interceptor);			
 		}
 
 	}
