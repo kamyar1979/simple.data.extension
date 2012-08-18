@@ -6,7 +6,7 @@
 	using System.Data;
 	using System.Data.Common;
 	using System.Dynamic;
-	using Castle.DynamicProxy;
+	using LinFu.DynamicProxy;
 
 	/// <summary>
 	/// The brain of the project: Windsor IoC Interceptor.
@@ -16,26 +16,26 @@
 		private DbConnection connection;
 
 		/// <summary>
-		/// main Intercetpr method.
+		/// Main Intercetpr method.
 		/// </summary>
-		/// <param name="invocation"></param>
-		public void Intercept(IInvocation invocation)
+		/// <param name="info"></param>
+		public object Intercept(InvocationInfo info)
 		{
-			var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ProviderName);
+			var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[info.TargetMethod.DeclaringType]].ProviderName);
 			connection = factory.CreateConnection();
-			connection.ConnectionString = ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ConnectionString;
+			connection.ConnectionString = ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[info.TargetMethod.DeclaringType]].ConnectionString;
 			connection.Open();
 
-			bool returnAsResult = Attribute.IsDefined(invocation.Method, typeof(ReturnValueAsResultAttribute));
+			bool returnAsResult = Attribute.IsDefined(info.TargetMethod, typeof(ReturnValueAsResultAttribute));
 
 			var command = factory.CreateCommand();
 			command.Connection = this.connection;
 			command.CommandType = CommandType.StoredProcedure;
-			command.CommandText = invocation.Method.Name;
+			command.CommandText = info.TargetMethod.Name;
 			int i = 0;
-			foreach (var item in invocation.Method.GetParameters())
+			foreach (var item in info.TargetMethod.GetParameters())
 			{
-				if (item.IsOptional && invocation.Arguments.Length < i + 1)
+				if (item.IsOptional && info.Arguments.Length < i + 1)
 				{
 					break;
 				}
@@ -50,15 +50,15 @@
 					param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
 				}
 				param.DbType = (DbType)Enum.Parse(typeof(DbType), item.ParameterType.Name.Replace("&", ""));
-				param.Value = invocation.Arguments[i];
+				param.Value = info.Arguments[i];
 				command.Parameters.Add(param);
 				i++;
 			}
-			if (invocation.Method.ReturnType != null)
+			if (info.TargetMethod.ReturnType != null)
 			{
 				if (!returnAsResult)
 				{
-					if (invocation.Method.ReturnType == typeof(Dictionary<string, object>))
+					if (info.TargetMethod.ReturnType == typeof(Dictionary<string, object>))
 					{
 						var reader = command.ExecuteReader();
 						if (reader.Read())
@@ -69,40 +69,50 @@
 								fields[i] = reader.GetName(i);
 							}
 
-							if (invocation.Method.ReturnType == typeof(object))
+							if (info.TargetMethod.ReturnType == typeof(object))
 							{
 								var instance = new Dictionary<string, object>();
 								foreach (var name in fields)
 								{
 									instance.Add(name, reader[name] is DBNull ? null : reader[name]);
 								}
-								invocation.ReturnValue = instance;
+								return instance;
 							}
 						}
 					}
-					else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string))
+					else if (info.TargetMethod.ReturnType.IsPrimitive || info.TargetMethod.ReturnType == typeof(string))
 					{
-						invocation.ReturnValue = command.ExecuteScalar();
+						var result = command.ExecuteScalar();
+						int j = 0;
+						foreach (var item in info.TargetMethod.GetParameters())
+						{
+							if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
+							{
+								info.Arguments[j] = command.Parameters[item.Name].Value;
+							}
+							j++;
+						}
+						return result;
 					}
-					else if (invocation.Method.ReturnType.GetInterface("IEnumerable") != null)
+					else if (info.TargetMethod.ReturnType.GetInterface("IEnumerable") != null)
 					{
 						var reader = command.ExecuteReader();
 						Type type;
-						if (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0] != typeof(object))
+						if (info.TargetMethod.ReturnType.IsGenericType && info.TargetMethod.ReturnType.GetGenericArguments()[0] != typeof(object))
 						{
-							if (invocation.Method.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
+							if (info.TargetMethod.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
 							{
-								invocation.ReturnValue = this.GetIteratorDictionary(reader);
+								return this.GetIteratorDictionary(reader);
 							}
 							else
 							{
-								type = invocation.Method.ReturnType.GetGenericArguments()[0];
-								invocation.ReturnValue = this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
+								type = info.TargetMethod.ReturnType.GetGenericArguments()[0];
+								return this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
 							}
 						}
 						else
 						{
-							invocation.ReturnValue = this.GetIteratorDynamic(reader);
+							return this.GetIteratorDynamic(reader);
 						}
 
 					}
@@ -118,7 +128,7 @@
 									fields[i] = reader.GetName(i);
 								}
 
-								if (invocation.Method.ReturnType == typeof(object))
+								if (info.TargetMethod.ReturnType == typeof(object))
 								{
 									var builder = new DynamicTypeBuilder("anonym_" + reader.GetHashCode());
 									foreach (var name in fields)
@@ -132,24 +142,24 @@
 										var fieldType = reader.GetFieldType(reader.GetOrdinal(name));
 										type.GetProperty(name).SetValue(instance, reader[name] is DBNull ? null : reader[name], null);
 									}
-									invocation.ReturnValue = instance;
+									return instance;
 								}
 								else
 								{
-									var instance = Activator.CreateInstance(invocation.Method.ReturnType);
-									foreach (var prop in invocation.Method.ReturnType.GetProperties())
+									var instance = Activator.CreateInstance(info.TargetMethod.ReturnType);
+									foreach (var prop in info.TargetMethod.ReturnType.GetProperties())
 									{
 										if (Array.IndexOf(fields, prop.Name) != -1)
 										{
 											prop.SetValue(instance, reader[prop.Name] is DBNull ? null : reader[prop.Name], null);
 										}
 									}
-									invocation.ReturnValue = instance;
+									return instance;
 								}
 							}
 							else
 							{
-								invocation.ReturnValue = null;
+								return null;
 							}
 						}
 					}
@@ -160,12 +170,12 @@
 
 					retval.Direction = ParameterDirection.ReturnValue;
 					retval.ParameterName = "RetVal";
-					retval.DbType = (DbType)Enum.Parse(typeof(DbType), invocation.Method.ReturnType.Name.Replace("&", ""));
+					retval.DbType = (DbType)Enum.Parse(typeof(DbType), info.TargetMethod.ReturnType.Name.Replace("&", ""));
 					command.Parameters.Add(retval);
 
 					command.ExecuteNonQuery();
 
-					invocation.ReturnValue = retval.Value;
+					return retval.Value;
 				}
 			}
 			else
@@ -173,14 +183,15 @@
 				command.ExecuteNonQuery();
 			}
 			i = 0;
-			foreach (var item in invocation.Method.GetParameters())
+			foreach (var item in info.TargetMethod.GetParameters())
 			{
 				if (item.IsOut)
 				{
-					invocation.Arguments[i] = command.Parameters[i].Value;
+					info.Arguments[i] = command.Parameters[i].Value;
 				}
 				i++;
 			}
+			return null;
 		}
 
 		private IEnumerable<Dictionary<string, object>> GetIteratorDictionary(DbDataReader reader)
@@ -254,6 +265,5 @@
 			reader.Close();
 			yield break;
 		}
-
 	}
 }
