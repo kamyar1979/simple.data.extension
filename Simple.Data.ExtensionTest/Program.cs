@@ -29,6 +29,7 @@ namespace Simple.Data.ExtensionTest
 
 			int retval = 0;
 			
+
 			Console.WriteLine(db.TestRetValParam("Kamyar", out retval));
 
 			Console.WriteLine(retval);

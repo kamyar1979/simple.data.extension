@@ -21,6 +21,7 @@
 		/// <param name="info"></param>
 		public object Intercept(InvocationInfo info)
 		{
+			object returnValue = null;
 			var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[info.TargetMethod.DeclaringType]].ProviderName);
 			connection = factory.CreateConnection();
 			connection.ConnectionString = ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[info.TargetMethod.DeclaringType]].ConnectionString;
@@ -54,7 +55,7 @@
 				command.Parameters.Add(param);
 				i++;
 			}
-			if (info.TargetMethod.ReturnType != null)
+			if (info.TargetMethod.ReturnType != typeof(void))
 			{
 				if (!returnAsResult)
 				{
@@ -76,23 +77,13 @@
 								{
 									instance.Add(name, reader[name] is DBNull ? null : reader[name]);
 								}
-								return instance;
+								returnValue = instance;
 							}
 						}
 					}
 					else if (info.TargetMethod.ReturnType.IsPrimitive || info.TargetMethod.ReturnType == typeof(string))
 					{
-						var result = command.ExecuteScalar();
-						int j = 0;
-						foreach (var item in info.TargetMethod.GetParameters())
-						{
-							if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
-							{
-								info.Arguments[j] = command.Parameters[item.Name].Value;
-							}
-							j++;
-						}
-						return result;
+						returnValue = command.ExecuteScalar();
 					}
 					else if (info.TargetMethod.ReturnType.GetInterface("IEnumerable") != null)
 					{
@@ -102,21 +93,21 @@
 						{
 							if (info.TargetMethod.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
 							{
-								return this.GetIteratorDictionary(reader);
+								returnValue = this.GetIteratorDictionary(reader);
 							}
 							else
 							{
 								type = info.TargetMethod.ReturnType.GetGenericArguments()[0];
-								return this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
+								returnValue = this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
 							}
 						}
 						else
 						{
-							return this.GetIteratorDynamic(reader);
+							returnValue = this.GetIteratorDynamic(reader);
 						}
 
 					}
-					else
+					else if (info.TargetMethod.ReturnType == typeof(object))
 					{
 						using (var reader = command.ExecuteReader())
 						{
@@ -142,7 +133,7 @@
 										var fieldType = reader.GetFieldType(reader.GetOrdinal(name));
 										type.GetProperty(name).SetValue(instance, reader[name] is DBNull ? null : reader[name], null);
 									}
-									return instance;
+									returnValue = instance;
 								}
 								else
 								{
@@ -154,12 +145,8 @@
 											prop.SetValue(instance, reader[prop.Name] is DBNull ? null : reader[prop.Name], null);
 										}
 									}
-									return instance;
+									returnValue = instance;
 								}
-							}
-							else
-							{
-								return null;
 							}
 						}
 					}
@@ -175,7 +162,7 @@
 
 					command.ExecuteNonQuery();
 
-					return retval.Value;
+					returnValue = retval.Value;
 				}
 			}
 			else
@@ -191,7 +178,7 @@
 				}
 				i++;
 			}
-			return null;
+			return returnValue;
 		}
 
 		private IEnumerable<Dictionary<string, object>> GetIteratorDictionary(DbDataReader reader)
