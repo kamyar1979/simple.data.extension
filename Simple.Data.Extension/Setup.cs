@@ -2,7 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
-	using LinFu.DynamicProxy;	
+	using Castle.DynamicProxy;		
 
 	/// <summary>
 	/// This class is the only thing you have to consider using: Sets up the whole things!
@@ -34,8 +34,8 @@
 		/// <returns></returns>
 		public static T GetInstance<T>() where T: class
 		{
-			var proxyGen = new ProxyFactory();
-			return proxyGen.CreateProxy<T>(interceptor);
+			var proxyGen = new ProxyGenerator();
+			return proxyGen.CreateInterfaceProxyWithoutTarget<T>(new StoredProcedureInterceptor());
 		}
 
 	}
