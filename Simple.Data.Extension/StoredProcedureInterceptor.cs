@@ -41,7 +41,14 @@
 					break;
 				}
 				var param = factory.CreateParameter();
-				param.ParameterName = item.Name;
+				if (DBNameAttribute.IsDefined(item, typeof(DBNameAttribute)))
+				{
+					param.ParameterName = (DBNameAttribute.GetCustomAttribute(item, typeof(DBNameAttribute)) as DBNameAttribute).Name;
+				}
+				else
+				{
+					param.ParameterName = item.Name;
+				}
 				if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
 				{
 					param.Direction = ParameterDirection.ReturnValue;

@@ -11,6 +11,6 @@ namespace Simple.Data.ExtensionTest
 		Lesson GetLesson(int lessonCode);
 		[ReturnValueAsResult]
 		int TestRetVal();
-		string TestRetValParam(string param1, [ReturnValue] out int retval);
+		string TestRetValParam([DBName("param1")] string p, [ReturnValue] out int retval);
 	}
 }
