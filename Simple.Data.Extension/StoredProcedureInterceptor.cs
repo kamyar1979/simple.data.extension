@@ -15,6 +15,8 @@
 	{
 		private DbConnection connection;
 
+		private DbDataReader reader;
+
 		/// <summary>
 		/// Main Intercetpr method.
 		/// </summary>
@@ -67,7 +69,7 @@
 				{
 					if (invocation.Method.ReturnType == typeof(Dictionary<string, object>))
 					{
-						var reader = command.ExecuteReader();
+						this.reader = command.ExecuteReader();
 						if (reader.Read())
 						{
 							string[] fields = new string[reader.FieldCount];
@@ -93,13 +95,13 @@
 					}
 					else if (invocation.Method.ReturnType.GetInterface("IEnumerable") != null)
 					{
-						var reader = command.ExecuteReader();
+						this.reader = command.ExecuteReader();
 						Type type;
 						if (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0] != typeof(object))
 						{
 							if (invocation.Method.ReturnType.GetGenericArguments()[0] == typeof(Dictionary<string, object>))
 							{
-								invocation.ReturnValue = this.GetIteratorDictionary(reader);
+								invocation.ReturnValue = Utils.GetIteratorDictionary(reader);
 							}
 							else
 							{
@@ -109,13 +111,13 @@
 						}
 						else
 						{
-							invocation.ReturnValue = this.GetIteratorDynamic(reader);
+							invocation.ReturnValue = Utils.GetIteratorDynamic(reader);
 						}
 
 					}
 					else if (invocation.Method.ReturnType == typeof(object))
 					{
-						using (var reader = command.ExecuteReader())
+						using (this.reader = command.ExecuteReader())
 						{
 							if (reader.Read())
 							{
@@ -183,79 +185,7 @@
 					invocation.Arguments[i] = command.Parameters[i].Value;
 				}
 				i++;
-			}			
-		}
-
-		private IEnumerable<Dictionary<string, object>> GetIteratorDictionary(DbDataReader reader)
-		{
-			Dictionary<string, object> instance;
-			string[] fields = new string[reader.FieldCount];
-			for (int i = 0; i < reader.FieldCount; i++)
-			{
-				fields[i] = reader.GetName(i);
 			}
-			while (reader.Read())
-			{
-				instance = new Dictionary<string, object>();
-				foreach (var name in fields)
-				{
-					instance.Add(name, reader[name] is DBNull ? null : reader[name]);
-				}
-				yield return instance;
-			}
-			reader.Close();
-			yield break;
-		}
-
-		private IEnumerable<T> GetIterator<T>(IDataReader reader) where T : class, new()
-		{
-			T instance;
-			string[] fields = new string[reader.FieldCount];
-			for (int i = 0; i < reader.FieldCount; i++)
-			{
-				fields[i] = reader.GetName(i);
-			}
-			while (reader.Read())
-			{
-				instance = new T();
-				foreach (var prop in typeof(T).GetProperties())
-				{
-					if (Array.IndexOf(fields, prop.Name) != -1)
-					{
-						prop.SetValue(instance, reader[prop.Name] is DBNull ? null : reader[prop.Name], null);
-					}
-				}
-				yield return instance;
-			}
-			reader.Close();
-			yield break;
-		}
-
-		private IEnumerable<object> GetIteratorDynamic(IDataReader reader)
-		{
-			var builder = new DynamicTypeBuilder("anonym_" + reader.GetHashCode());
-			string[] fields = new string[reader.FieldCount];
-			for (int i = 0; i < reader.FieldCount; i++)
-			{
-				fields[i] = reader.GetName(i);
-			}
-			foreach (var name in fields)
-			{
-				builder.AddProperty(name, reader.GetFieldType(reader.GetOrdinal(name)));
-			}
-			var type = builder.CreateType();
-			while (reader.Read())
-			{
-				var instance = Activator.CreateInstance(type);
-				foreach (var name in fields)
-				{
-					var fieldType = reader.GetFieldType(reader.GetOrdinal(name));
-					type.GetProperty(name).SetValue(instance, reader[name] is DBNull ? null : reader[name], null);
-				}
-				yield return instance;
-			}
-			reader.Close();
-			yield break;
 		}
 	}
 }

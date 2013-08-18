@@ -23,7 +23,7 @@
 		/// <typeparam name="T">Interface type</typeparam>
 		/// <param name="connectionName">Database connection string name  in the web/app.config</param>
 		public static void Register<T>(string connectionName = "default") where T : class
-		{			
+		{
 			connectionStringNames[typeof(T)] = connectionName;
 		}
 
@@ -36,6 +36,16 @@
 		{
 			var proxyGen = new ProxyGenerator();
 			return proxyGen.CreateInterfaceProxyWithoutTarget<T>(new StoredProcedureInterceptor());
+		}
+
+		/// <summary>
+		/// Creates a dynamic instance of the DB provider to use the stored procedures.
+		/// </summary>
+		/// <param name="connectionStringName">Name of the connection string which must be used as database endpoint.</param>
+		/// <returns></returns>
+		public static object GetInstance(string connectionStringName)
+		{
+			return new DynamicDatabase() { ConnectionStringName = connectionStringName };
 		}
 
 	}
