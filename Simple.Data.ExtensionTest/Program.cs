@@ -11,9 +11,9 @@ namespace Simple.Data.ExtensionTest
 	{
 		static void Main(string[] args)
 		{			
-			//Setup.Register<IFinancialStoredProcedures>("Financial");
+			Setup.Register<IFinancialStoredProcedures>("Financial");
 
-			//var db = Setup.GetInstance<IFinancialStoredProcedures>();
+			var db = Setup.GetInstance<IFinancialStoredProcedures>();
 
 			//var res = financial.GetLessonList();			
 
@@ -29,13 +29,15 @@ namespace Simple.Data.ExtensionTest
 
 			//int retval = 0;						
 
-			dynamic db = Setup.GetInstance("Financial");
+			//dynamic db = Setup.GetInstance("Financial");
 
 			//int retval = db.TestRetVal<int>();			
-			IEnumerable<object> ret = db.TestSP2<IEnumerable<object>>(1);
+			bool retval = db.TestRetVal();
+			//IEnumerable<object> ret = db.TestSP2<IEnumerable<object>>(1);
 
+			Console.Write(retval);
 
-			var list = ret.ToList();
+			//var list = ret.ToList();
 
 			//Console.WriteLine(db.TestRetValParam("Kamyar", out retval));
 			//Console.WriteLine(retval);

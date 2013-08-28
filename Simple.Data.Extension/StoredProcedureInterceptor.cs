@@ -170,7 +170,8 @@
 
 					command.ExecuteNonQuery();
 
-					invocation.ReturnValue = retval.Value;
+					invocation.ReturnValue = Convert.ChangeType(retval.Value, invocation.Method.ReturnType);
+					//invocation.ReturnValue = retval.Value;
 				}
 			}
 			else

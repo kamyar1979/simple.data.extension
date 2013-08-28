@@ -6,11 +6,11 @@ using Simple.Data.Extension;
 namespace Simple.Data.ExtensionTest
 {
 	public interface IFinancialStoredProcedures
-	{		
+	{
 		IEnumerable<object> GetLessonList();
 		Lesson GetLesson(int lessonCode);
 		[ReturnValueAsResult]
-		int TestRetVal();
+		bool TestRetVal();
 		string TestRetValParam([DBName("param1")] string p, [ReturnValue] out int retval);
 	}
 }
