@@ -88,8 +88,8 @@
 								invocation.ReturnValue = instance;
 							}
 						}
-					}
-					else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string))
+					}					
+					else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string) || (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0].IsPrimitive))
 					{
 						invocation.ReturnValue = command.ExecuteScalar();
 					}

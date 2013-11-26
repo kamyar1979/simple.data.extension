@@ -13,7 +13,7 @@ namespace Simple.Data.ExtensionTest
 		{			
 			Setup.Register<IFinancialStoredProcedures>("Financial");
 
-			var db = Setup.GetInstance<IFinancialStoredProcedures>();
+			//var db = Setup.GetInstance<IFinancialStoredProcedures>();
 
 			//var res = financial.GetLessonList();			
 
@@ -29,7 +29,7 @@ namespace Simple.Data.ExtensionTest
 
 			//int retval = 0;						
 
-			//dynamic db = Setup.GetInstance("Financial");
+			dynamic db = Setup.GetInstance("Financial");			
 
 			//int retval = db.TestRetVal<int>();			
 			bool retval = db.TestRetVal();
