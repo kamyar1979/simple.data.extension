@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="IFinancialStoredProcedures.cs" />
     <Compile Include="Lesson.cs" />
+    <Compile Include="Organization.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

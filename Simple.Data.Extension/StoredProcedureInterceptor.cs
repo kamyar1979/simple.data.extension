@@ -7,6 +7,7 @@
 	using System.Data.Common;
 	using System.Dynamic;
 	using Castle.DynamicProxy;
+	using System.Reflection;
 
 	/// <summary>
 	/// The brain of the project: Windsor IoC Interceptor.
@@ -118,7 +119,7 @@
 								else
 								{
 									type = invocation.Method.ReturnType.GetGenericArguments()[0];
-									invocation.ReturnValue = typeof(Utils).GetMethod("GetIterator").MakeGenericMethod(type).Invoke(null, new object[] { reader });
+									invocation.ReturnValue = typeof(Utils).GetMethod("GetIterator", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(type).Invoke(null, new object[] { reader });
 								}
 							}
 							else

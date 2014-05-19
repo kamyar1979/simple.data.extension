@@ -5,9 +5,10 @@ using Simple.Data.Extension;
 
 namespace Simple.Data.ExtensionTest
 {
-	public interface IFinancialStoredProcedures
+	public interface IFinancialStoredProcedures : IDisposable
 	{
 		IEnumerable<object> GetLessonList();
+		IEnumerable<Organization> TestSP2(int p1);
 		Lesson GetLesson(int lessonCode);
 		[ReturnValueAsResult]
 		bool TestRetVal();

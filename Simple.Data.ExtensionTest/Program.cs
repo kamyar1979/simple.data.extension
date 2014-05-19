@@ -29,13 +29,14 @@ namespace Simple.Data.ExtensionTest
 
 			//int retval = 0;						
 
-			dynamic db = Setup.GetInstance("Financial");			
+			var db = Setup.GetInstance<IFinancialStoredProcedures>();
 
 			//int retval = db.TestRetVal<int>();			
-			bool retval = db.TestRetVal();
+			//bool retval = db.TestRetVal();
 			//IEnumerable<object> ret = db.TestSP2<IEnumerable<object>>(1);
+			var retval = db.TestSP2(1);
 
-			Console.Write(retval);
+			Console.Write(retval.ToList()[0].OrgName);
 
 			//var list = ret.ToList();
 
