@@ -2,7 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
-	using Castle.DynamicProxy;		
+	using Castle.DynamicProxy;
 
 	/// <summary>
 	/// This class is the only thing you have to consider using: Sets up the whole things!
@@ -10,7 +10,7 @@
 	public static class Setup
 	{
 		internal static StoredProcedureInterceptor interceptor;
-		internal static Dictionary<Type, string> connectionStringNames = new Dictionary<Type,string>();
+		internal static Dictionary<Type, string> connectionStringNames = new Dictionary<Type, string>();		
 
 		static Setup()
 		{
@@ -32,7 +32,7 @@
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		public static T GetInstance<T>() where T: class
+		public static T GetInstance<T>() where T : class
 		{
 			var proxyGen = new ProxyGenerator();
 			return proxyGen.CreateInterfaceProxyWithoutTarget<T>(new StoredProcedureInterceptor());

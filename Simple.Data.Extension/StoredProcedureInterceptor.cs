@@ -6,7 +6,7 @@
 	using System.Data;
 	using System.Data.Common;
 	using System.Dynamic;
-	using Castle.DynamicProxy;	
+	using Castle.DynamicProxy;
 
 	/// <summary>
 	/// The brain of the project: Windsor IoC Interceptor.
@@ -22,10 +22,17 @@
 		/// </summary>
 		/// <param name="invocation"></param>
 		public void Intercept(IInvocation invocation)
-		{			
-			var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ProviderName);
-			using (connection = factory.CreateConnection())
+		{
+			try
 			{
+				if (invocation.Method.DeclaringType == typeof(IDisposable))
+				{
+					this.connection.Dispose();
+					return;
+				}
+
+				var factory = DbProviderFactories.GetFactory(ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ProviderName);
+				this.connection = factory.CreateConnection();
 				connection.ConnectionString = ConfigurationManager.ConnectionStrings[Setup.connectionStringNames[invocation.Method.DeclaringType]].ConnectionString;
 				connection.Open();
 
@@ -90,9 +97,13 @@
 								}
 							}
 						}
-						else if (invocation.Method.ReturnType.IsPrimitive || invocation.Method.ReturnType == typeof(string) || (invocation.Method.ReturnType.IsGenericType && invocation.Method.ReturnType.GetGenericArguments()[0].IsPrimitive))
+						else if (invocation.Method.ReturnType.Namespace == "System")
 						{
-							invocation.ReturnValue = command.ExecuteScalar();
+							var result = command.ExecuteScalar();
+							if (result is DBNull)
+								invocation.ReturnValue = null;
+							else
+								invocation.ReturnValue = command.ExecuteScalar();
 						}
 						else if (invocation.Method.ReturnType.GetInterface("IEnumerable") != null)
 						{
@@ -171,8 +182,7 @@
 
 						command.ExecuteNonQuery();
 
-						invocation.ReturnValue = Convert.ChangeType(retval.Value, invocation.Method.ReturnType);
-						//invocation.ReturnValue = retval.Value;
+						invocation.ReturnValue = Convert.ChangeType(retval.Value, invocation.Method.ReturnType);						
 					}
 				}
 				else
@@ -188,6 +198,10 @@
 					}
 					i++;
 				}
+			}
+			finally
+			{
+				if (invocation.Method.DeclaringType.GetInterface("IDisposable") == null) this.connection.Dispose();
 			}
 		}
 	}
