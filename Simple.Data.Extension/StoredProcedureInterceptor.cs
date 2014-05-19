@@ -118,7 +118,7 @@
 								else
 								{
 									type = invocation.Method.ReturnType.GetGenericArguments()[0];
-									invocation.ReturnValue = this.GetType().GetMethod("GetIterator").MakeGenericMethod(type).Invoke(this, new object[] { reader });
+									invocation.ReturnValue = typeof(Utils).GetMethod("GetIterator").MakeGenericMethod(type).Invoke(null, new object[] { reader });
 								}
 							}
 							else
