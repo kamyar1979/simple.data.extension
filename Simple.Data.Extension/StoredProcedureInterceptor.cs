@@ -98,7 +98,7 @@
 								}
 							}
 						}
-						else if (invocation.Method.ReturnType.Namespace == "System")
+						else if (invocation.Method.ReturnType.Namespace == "System" && invocation.Method.ReturnType != typeof(object))
 						{
 							var result = command.ExecuteScalar();
 							if (result is DBNull)
