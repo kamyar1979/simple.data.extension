@@ -15,6 +15,27 @@
 	[AttributeUsage(AttributeTargets.Parameter)]
 	public class ReturnValueAttribute : Attribute { }
 
+    /// <summary>
+    /// says that this methid parameter should be considered as target stored procedure 'Size' parameter.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Parameter)]
+    public class SizeAttribute : Attribute
+    { 
+        /// <summary>
+		/// Initializes a new instance of the attribute.
+		/// </summary>
+		/// <param name="name"></param>
+        public SizeAttribute(int size)
+		{
+			this.Size = size;
+		}
+
+		/// <summary>
+		/// The parameter size in the database stored procedure syntax.
+		/// </summary>
+		public int Size { get; set; }
+    }
+	
 	/// <summary>
 	/// This attributes is used when you want to name the attribute something other than the database name.
 	/// </summary>
