@@ -24,7 +24,7 @@
         /// <summary>
 		/// Initializes a new instance of the attribute.
 		/// </summary>
-		/// <param name="name"></param>
+		/// <param name="size">Size of the string</param>
         public SizeAttribute(int size)
 		{
 			this.Size = size;
