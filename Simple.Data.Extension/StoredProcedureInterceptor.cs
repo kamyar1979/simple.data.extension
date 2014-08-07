@@ -68,6 +68,10 @@
 						param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
 					}
 					param.DbType = (DbType)Enum.Parse(typeof(DbType), item.ParameterType.Name.Replace("&", ""));
+					if (SizeAttribute.IsDefined(item, typeof(SizeAttribute)))
+                    {
+                        param.Size = (SizeAttribute.GetCustomAttribute(item, typeof(SizeAttribute)) as SizeAttribute).Size;
+                    }
 					param.Value = invocation.Arguments[i];
 					command.Parameters.Add(param);
 					i++;
