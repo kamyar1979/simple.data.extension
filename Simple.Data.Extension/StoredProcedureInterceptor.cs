@@ -50,30 +50,47 @@
 					{
 						break;
 					}
-					var param = factory.CreateParameter();
-					if (DBNameAttribute.IsDefined(item, typeof(DBNameAttribute)))
-					{
-						param.ParameterName = (DBNameAttribute.GetCustomAttribute(item, typeof(DBNameAttribute)) as DBNameAttribute).Name;
-					}
-					else
-					{
-						param.ParameterName = item.Name;
-					}
-					if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
-					{
-						param.Direction = ParameterDirection.ReturnValue;
-					}
-					else
-					{
-						param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
-					}
-					param.DbType = (DbType)Enum.Parse(typeof(DbType), item.ParameterType.Name.Replace("&", ""));
-					if (SizeAttribute.IsDefined(item, typeof(SizeAttribute)))
-                    {
-                        param.Size = (SizeAttribute.GetCustomAttribute(item, typeof(SizeAttribute)) as SizeAttribute).Size;
+					
+					//Check Nullable parameter. 
+                    if (invocation.Arguments[i] == null && 
+                        item.ParameterType.IsGenericType &&
+                        item.ParameterType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+                    { 
+                        //Jump if ParameterValue == null && ParameterType is Nullable  
                     }
-					param.Value = invocation.Arguments[i];
-					command.Parameters.Add(param);
+                    else
+                    {
+						var param = factory.CreateParameter();
+						if (DBNameAttribute.IsDefined(item, typeof(DBNameAttribute)))
+						{
+							param.ParameterName = (DBNameAttribute.GetCustomAttribute(item, typeof(DBNameAttribute)) as DBNameAttribute).Name;
+						}
+						else
+						{
+							param.ParameterName = item.Name;
+						}
+						if (Attribute.IsDefined(item, typeof(ReturnValueAttribute)))
+						{
+							param.Direction = ParameterDirection.ReturnValue;
+						}
+						else
+						{
+							param.Direction = item.IsOut ? ParameterDirection.Output : ParameterDirection.Input;
+						}
+						
+						//Check Nullable parameter && ParamValue != null
+                        var type = item.ParameterType;
+                        var underlyingType = Nullable.GetUnderlyingType(type);
+                        var returnType = underlyingType ?? type;
+                        param.DbType = (DbType)Enum.Parse(typeof(DbType), returnType.Name.Replace("&", ""));
+						
+						if (SizeAttribute.IsDefined(item, typeof(SizeAttribute)))
+						{
+							param.Size = (SizeAttribute.GetCustomAttribute(item, typeof(SizeAttribute)) as SizeAttribute).Size;
+						}
+						param.Value = invocation.Arguments[i];
+						command.Parameters.Add(param);
+					}
 					i++;
 				}
 				if (invocation.Method.ReturnType != typeof(void))
